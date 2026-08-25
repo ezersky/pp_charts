@@ -30,7 +30,7 @@
     .pp-select { width: 100%; height: 32px; }
     .pp-input { width: 100%; height: 32px; }
     
-    textarea { font-family: monospace; min-height: 110px; resize: vertical; font-size: 11px; width: 100%; }
+    textarea { font-family: monospace; min-height: 160px; resize: vertical; font-size: 11px; width: 100%; }
     .btn-group { display: flex; gap: 8px; margin-top: 10px; }
     .tokens-container { max-height: 90px; overflow-y: auto; border: 1px solid #444; padding: 6px; border-radius: 4px; background: #121212; }
     .token-badge { display: inline-block; padding: 3px 6px; font-size: 11px; border-radius: 4px; background: #2a2a2a; margin: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
@@ -67,11 +67,13 @@
   </div>
   
   <div class="form-group">
-    <label class="pp-label">Конфигурация (JSON)</label>
+    <label class="pp-label">Конфигурация данных (JSON)</label>
+    <!-- Полная валидная структура Chart.js: дизайнер сразу управляет и подписями, и данными -->
     <textarea id="chartData" class="pp-input">{
+  "labels": ["Янв", "Фев", "Мар"],
   "datasets": [
     {
-      "label": "Данные",
+      "label": "Прогресс",
       "data":,
       "backgroundColor": ["#3B82F6", "#10B981", "#F59E0B"]
     }
@@ -109,19 +111,11 @@
       document.getElementById('tokensList').appendChild(b);
     }
     
+    // Абсолютно прозрачная функция сборки конфига, которая просто прокидывает валидный JSON пользователя
     function buildConfig(fmt = 'svg') {
       try {
         const rawData = document.getElementById('chartData').value;
-        const parsed = JSON.parse(rawData);
-        
-        // Проверяем, передан ли массив или объект с datasets
-        const datasets = parsed.datasets ? parsed.datasets : (Array.isArray(parsed) ? parsed : [parsed]);
-        
-        // Безопасное определение количества точек данных для подписей
-        let dataLength = 3;
-        if (datasets && datasets[0] && Array.isArray(datasets[0].data)) {
-          dataLength = datasets[0].data.length;
-        }
+        const chartContent = JSON.parse(rawData);
         
         return { 
           format: fmt, 
@@ -129,24 +123,18 @@
           height: parseInt(document.getElementById('height').value) || 350,
           chart: { 
             type: document.getElementById('chartType').value, 
-            data: { 
-              labels: ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг"].slice(0, dataLength), 
-              datasets: datasets 
-            }, 
+            // Подмешиваем данные пользователя (labels и datasets) напрямую в Chart.js структуру
+            data: chartContent, 
             options: { 
-              responsive: true,
-              plugins: {
-                legend: { position: 'bottom' }
-              }
+              responsive: true
             } 
           } 
         };
       } catch(e) { 
-        alert('Ошибка валидации JSON! Убедитесь, что структура корректна.'); 
+        alert('Ошибка валидации JSON! Убедитесь, что фигурные скобки расставлены правильно.'); 
         return null; 
       }
     }
-
     
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
