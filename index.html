@@ -106,12 +106,10 @@
         const rawData = document.getElementById('chartData').value;
         const datasets = JSON.parse(rawData);
         
-        // Безопасное определение количества точек данных
+        // Корректное и безопасное определение длины подписей для массива объектов
         let dataLength = 3;
-        if (datasets && datasets[0] && datasets[0].data) {
+        if (Array.isArray(datasets) && datasets[0] && Array.isArray(datasets[0].data)) {
           dataLength = datasets[0].data.length;
-        } else if (datasets && datasets.data) {
-          dataLength = datasets.data.length;
         }
         
         return { 
@@ -124,16 +122,18 @@
               labels: ["А","Б","В","Г","Д","Е","Ж","З"].slice(0, dataLength), 
               datasets: datasets 
             }, 
-            options: { responsive: true } 
+            options: { 
+              responsive: true,
+              legend: { position: 'bottom' }
+            } 
           } 
         };
       } catch(e) { 
-        alert('Ошибка валидации JSON в поле Конфигурация!'); 
+        alert('Ошибка валидации JSON в поле Конфигурация! Убедитесь, что это массив [ { ... } ]'); 
         return null; 
       }
     }
     
-    // Прямой вызов защищенного API qc.ezersky.ru
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
       if (!cfg) return;
@@ -148,7 +148,7 @@
         const svgCode = await res.text();
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер qc.ezersky.ru не вернул данные. Проверьте CORS-заголовки.');
+        alert('Сервер qc.ezersky.ru не вернул данные. Проверьте CORS или конфигурацию.');
       }
     };
     
