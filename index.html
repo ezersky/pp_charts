@@ -116,19 +116,36 @@
     
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
+      
       try {
+        // Отправляем запрос в формате, который QuickChart гарантированно понимает 
+        // без дополнительных модулей парсинга JSON в Nginx
         const res = await fetch('https://qc.ezersky.ru', { 
           method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'image/svg+xml, text/plain, */*'
+          }, 
           body: JSON.stringify(cfg) 
         });
-        if (!res.ok) throw new Error();
+        
+        if (!res.ok) {
+          throw new Error('Код ответа сервера: ' + res.status);
+        }
+        
         const svgCode = await res.text();
+        
+        // Проверяем, что сервер вернул именно SVG, а не текст ошибки
+        if (!svgCode.includes('<svg')) {
+          throw new Error('Сервер вернул невалидный SVG');
+        }
+
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен.');
+        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен, или проверьте вкладку Network в F12.');
       }
     };
+
     
     document.getElementById('saveSvgBtn').onclick = async () => {
       const cfg = buildConfig('svg');
