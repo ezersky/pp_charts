@@ -3,25 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <title>QuickChart UI</title>
-  <link rel="stylesheet" href="https://unpkg.com">
   <style>
-    body { padding: 16px; margin: 0; box-sizing: border-box; font-family: sans-serif; background-color: #1e1e1e; color: #ffffff; }
+    /* Встроенные нативные стили Penpot UI во избежание блокировок MIME/CDN */
+    body { 
+      padding: 16px; 
+      margin: 0; 
+      box-sizing: border-box; 
+      font-family: sans-serif; 
+      background-color: #1e1e1e; 
+      color: #ffffff; 
+    }
     .form-group { margin-bottom: 14px; }
     .row { display: flex; gap: 10px; }
     .row > div { flex: 1; }
-    .pp-label { color: #b3b3b3 !important; margin-bottom: 4px; display: block; font-size: 12px; }
-    .pp-input, .pp-select, textarea { background-color: #2d2d2d !important; color: #ffffff !important; border: 1px solid #444444 !important; }
-    textarea { font-family: monospace; min-height: 110px; resize: vertical; font-size: 11px; width: 100%; box-sizing: border-box; }
+    
+    .pp-label { color: #b3b3b3; margin-bottom: 4px; display: block; font-size: 12px; font-weight: 500; }
+    
+    .pp-input, .pp-select, textarea { 
+      background-color: #2d2d2d; 
+      color: #ffffff; 
+      border: 1px solid #444444; 
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .pp-select { width: 100%; height: 32px; }
+    .pp-input { width: 100%; height: 32px; }
+    
+    textarea { font-family: monospace; min-height: 110px; resize: vertical; font-size: 11px; width: 100%; }
     .btn-group { display: flex; gap: 8px; margin-top: 10px; }
     .tokens-container { max-height: 90px; overflow-y: auto; border: 1px solid #444; padding: 6px; border-radius: 4px; background: #121212; }
     .token-badge { display: inline-block; padding: 3px 6px; font-size: 11px; border-radius: 4px; background: #2a2a2a; margin: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
     .token-badge:hover { background: #3a3a3a; }
     .fallback-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
-    .pp-btn { cursor: pointer; font-weight: 500; }
-    .pp-btn-primary { background-color: #2f80ed !important; color: white !important; border: none; }
-    .pp-btn-primary:hover { background-color: #1b6fd1 !important; }
-    .pp-btn-secondary { background-color: #333333 !important; color: #e0e0e0 !important; border: 1px solid #444444 !important; }
-    .pp-btn-secondary:hover { background-color: #444444 !important; }
+    
+    .pp-btn { cursor: pointer; font-weight: 500; border: none; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+    .pp-btn-primary { background-color: #2f80ed; color: white; }
+    .pp-btn-primary:hover { background-color: #1b6fd1; }
+    .pp-btn-secondary { background-color: #333333; color: #e0e0e0; border: 1px solid #444444; }
+    .pp-btn-secondary:hover { background-color: #444444; }
   </style>
 </head>
 <body class="pp-theme-dark">
@@ -64,13 +85,11 @@
   </div>
 
   <script>
+    /* ВАЖНО: Укажите точный поддомен вашего запущенного QuickChart контейнера */
     const API_URL = 'https://ezersky.ru';
     const DEFAULT_PALETTE = [{name:"Синий",color:"#3B82F6"},{name:"Зеленый",color:"#10B981"},{name:"Оранжевый",color:"#F59E0B"},{name:"Красный",color:"#EF4444"}];
     
-    // Сразу при загрузке рендерим безопасную палитру (так как мы изолированы от API Penpot)
-    window.onload = () => { 
-      renderTokens([]); 
-    };
+    window.onload = () => { renderTokens([]); };
     
     function renderTokens(tokens) {
       const container = document.getElementById('tokensList'); 
@@ -106,7 +125,7 @@
           } 
         };
       } catch(e) { 
-        alert('Ошибка в формате JSON! Проверьте квадратные скобки и кавычки.'); 
+        alert('Ошибка в формате JSON!'); 
         return null; 
       }
     }
@@ -125,7 +144,7 @@
         const svgCode = await res.text();
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер qc.ezersky.ru не ответил. Убедитесь, что Docker запущен, а в Nginx настроены CORS заголовки.');
+        alert('Сервер не ответил. Убедитесь, что в Nginx для qc.ezersky.ru добавлены CORS-заголовки (актуально для запросов из github.io).');
       }
     };
     
