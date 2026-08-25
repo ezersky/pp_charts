@@ -18,7 +18,7 @@
     
     .pp-label { color: #b3b3b3; margin-bottom: 4px; display: block; font-size: 12px; font-weight: 500; }
     
-    .pp-input, .pp-select, textarea { 
+    .pp-input, .pp-select { 
       background-color: #2d2d2d; 
       color: #ffffff; 
       border: 1px solid #444444; 
@@ -30,13 +30,7 @@
     .pp-select { width: 100%; height: 32px; }
     .pp-input { width: 100%; height: 32px; }
     
-    textarea { font-family: monospace; min-height: 160px; resize: vertical; font-size: 11px; width: 100%; }
-    .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-    .tokens-container { max-height: 90px; overflow-y: auto; border: 1px solid #444; padding: 6px; border-radius: 4px; background: #121212; }
-    .token-badge { display: inline-block; padding: 3px 6px; font-size: 11px; border-radius: 4px; background: #2a2a2a; margin: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
-    .token-badge:hover { background: #3a3a3a; }
-    .fallback-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
-    
+    .btn-group { display: flex; gap: 8px; margin-top: 14px; }
     .pp-btn { cursor: pointer; font-weight: 500; border: none; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
     .pp-btn-primary { background-color: #2f80ed; color: white; }
     .pp-btn-primary:hover { background-color: #1b6fd1; }
@@ -57,24 +51,24 @@
   
   <div class="form-group row">
     <div>
-      <label class="pp-label">Ширина</label>
+      <label class="pp-label">Ширина (px)</label>
       <input type="number" id="width" class="pp-input" value="500">
     </div>
     <div>
-      <label class="pp-label">Высота</label>
+      <label class="pp-label">Высота (px)</label>
       <input type="number" id="height" class="pp-input" value="350">
     </div>
   </div>
   
+  <!-- Простые интуитивные поля вместо страшного JSON -->
   <div class="form-group">
-    <label class="pp-label">Конфигурация данных (JSON)</label>
-    <!-- Дефолтная строка полностью перепроверена и избавлена от лишних запятых -->
-    <textarea id="chartData" class="pp-input">{"labels":["Янв","Фев","Мар"],"datasets":[{"label":"Прогресс","data":[45,65,30],"backgroundColor":["#3B82F6","#10B981","#F59E0B"]}]}</textarea>
+    <label class="pp-label">Данные графика (через запятую)</label>
+    <input type="text" id="chartDataValues" class="pp-input" value="45, 65, 30">
   </div>
-  
+
   <div class="form-group">
-    <label class="pp-label">Цвета (клик для копирования):</label>
-    <div id="tokensList" class="tokens-container"></div>
+    <label class="pp-label">Подписи осей (через запятую)</label>
+    <input type="text" id="chartLabels" class="pp-input" value="Янв, Фев, Мар">
   </div>
   
   <button id="insertBtn" class="pp-btn pp-btn-primary" style="width: 100%; height: 36px; border-radius: 4px;">Вставить в макет</button>
@@ -85,72 +79,43 @@
   </div>
 
   <script>
-    const DEFAULT_PALETTE = [{name:"Синий",color:"#3B82F6"},{name:"Зеленый",color:"#10B981"},{name:"Оранжевый",color:"#F59E0B"},{name:"Красный",color:"#EF4444"}];
-    
-    window.onload = () => { renderTokens([]); };
-    
-    function renderTokens(tokens) {
-      const container = document.getElementById('tokensList'); 
-      container.innerHTML = '';
-      const t = document.createElement('div'); t.className = 'fallback-title'; t.innerText = 'Встроенная палитра цветов:'; container.appendChild(t);
-      DEFAULT_PALETTE.forEach(createBadge);
-    }
-    
-    function createBadge(t) {
-      const b = document.createElement('span'); b.className = 'token-badge'; b.style.borderLeft = `4px solid ${t.color}`; b.innerText = `${t.name} (${t.color})`;
-      b.onclick = () => navigator.clipboard.writeText(t.color); 
-      document.getElementById('tokensList').appendChild(b);
-    }
-    
+    // Генерация конфигурации полностью программно: никаких JSON.parse и опечаток!
     function buildConfig(fmt = 'svg') {
-      try {
-        let rawData = document.getElementById('chartData').value;
-        
-        // 1. Декодируем возможные HTML-сущности (например, если браузер превратил кавычки в &quot;)
-        const txt = document.createElement("textarea");
-        txt.innerHTML = rawData;
-        rawData = txt.value;
-        
-        // 2. Очищаем текст от "умных" кавычек, неразрывных пробелов и скрытых символов
-        rawData = rawData.replace(/[\u201c\u201d\u201e\u201f\u00ab\u00bb]/g, '"') // кавычки
-                         .replace(/[\u2018\u2019\u201a\u201b]/g, "'") // одинарные кавычки
-                         .replace(/\u00a0/g, ' ') // неразрывные пробелы
-                         .replace(/\s+/g, ' ') // лишние пробелы и переносы
-                         .trim();
-        
-        // 3. Автоматически исправляем частую опечатку с ведущей запятой в массивах типа [ , 45] -> [45]
-        rawData = rawData.replace(/\[\s*,\s*/g, '[');
-        
-        // 4. Безопасный парсинг через изолированную функцию
-        const chartContent = (new Function("return " + rawData))();
-        
-        if (!chartContent) {
-          throw new Error("Пустой объект");
-        }
-        
-        return { 
-          format: fmt, 
-          width: parseInt(document.getElementById('width').value) || 500, 
-          height: parseInt(document.getElementById('height').value) || 350,
-          chart: { 
-            type: document.getElementById('chartType').value, 
-            data: chartContent, 
-            options: { 
-              responsive: true
-            } 
-          } 
-        };
-      } catch(e) { 
-        alert('Ошибка разбора данных! Пожалуйста, перепроверьте правильность расстановки фигурных скобок и кавычек в поле конфигурации.'); 
-        return null; 
-      }
-    }
+      // Читаем числовые данные
+      const rawValues = document.getElementById('chartDataValues').value;
+      const dataArray = rawValues.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+      
+      // Читаем текстовые подписи
+      const rawLabels = document.getElementById('chartLabels').value;
+      const labelsArray = rawLabels.split(',').map(l => l.trim()).filter(l => l.length > 0);
 
+      const type = document.getElementById('chartType').value;
+
+      return { 
+        format: fmt, 
+        width: parseInt(document.getElementById('width').value) || 500, 
+        height: parseInt(document.getElementById('height').value) || 350,
+        chart: { 
+          type: type, 
+          data: {
+            labels: labelsArray,
+            datasets: [{
+              label: "Показатели",
+              data: dataArray,
+              backgroundColor: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"].slice(0, dataArray.length),
+              borderColor: "#3B82F6",
+              fill: type === 'line' ? false : true
+            }]
+          },
+          options: { 
+            responsive: true
+          } 
+        } 
+      };
+    }
     
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
-      if (!cfg) return;
-      
       try {
         const res = await fetch('https://qc.ezersky.ru', { 
           method: 'POST', 
@@ -161,12 +126,12 @@
         const svgCode = await res.text();
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер qc.ezersky.ru не вернул данные. Проверьте статус Docker или CORS-заголовки.');
+        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен.');
       }
     };
     
     document.getElementById('saveSvgBtn').onclick = async () => {
-      const cfg = buildConfig('svg'); if (!cfg) return;
+      const cfg = buildConfig('svg');
       try {
         const res = await fetch('https://qc.ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         download(await res.text(), 'chart.svg', 'image/svg+xml');
@@ -174,7 +139,7 @@
     };
     
     document.getElementById('savePngBtn').onclick = async () => {
-      const cfg = buildConfig('png'); if (!cfg) return;
+      const cfg = buildConfig('png');
       try {
         const res = await fetch('https://qc.ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         const blob = await res.blob();
