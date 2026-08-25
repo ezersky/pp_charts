@@ -1,0 +1,12 @@
+{
+  "name": "QuickChart Generator",
+  "id": "quickchart-penpot-generator",
+  "version": "1.0.0",
+  "description": "Генерация SVG-чартов через self-hosted QuickChart с поддержкой дизайн-токенов",
+  "main": "plugin.js",
+  "ui": "index.html",
+  "icon": "icon.svg",
+  "permissions": [
+    "content"
+  ]
+}
