@@ -2,8 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>QuickChart Generator UI</title>
-  <!-- Официальные стили плагинов Penpot для нативного UI -->
+  <title>QuickChart UI</title>
   <link rel="stylesheet" href="https://unpkg.com">
   <style>
     body { padding: 16px; margin: 0; box-sizing: border-box; font-family: sans-serif; }
@@ -12,31 +11,13 @@
     .row > div { flex: 1; }
     textarea { font-family: monospace; min-height: 110px; resize: vertical; font-size: 11px; }
     .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-    .tokens-container { 
-      max-height: 90px; 
-      overflow-y: auto; 
-      border: 1px solid var(--pp-border-primary, #444); 
-      padding: 6px; 
-      border-radius: 4px; 
-      background: var(--pp-bg-secondary, #222);
-    }
-    .token-badge { 
-      display: inline-block; 
-      padding: 3px 6px; 
-      font-size: 11px; 
-      border-radius: 4px; 
-      background: var(--pp-bg-primary, #333); 
-      margin: 3px; 
-      cursor: pointer; 
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #fff;
-    }
+    .tokens-container { max-height: 90px; overflow-y: auto; border: 1px solid var(--pp-border-primary, #444); padding: 6px; border-radius: 4px; background: var(--pp-bg-secondary, #222); }
+    .token-badge { display: inline-block; padding: 3px 6px; font-size: 11px; border-radius: 4px; background: var(--pp-bg-primary, #333); margin: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
     .token-badge:hover { opacity: 0.8; }
     .fallback-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
   </style>
 </head>
 <body class="pp-theme-dark">
-
   <div class="form-group">
     <label class="pp-label">Тип чарта</label>
     <select id="chartType" class="pp-select">
@@ -44,195 +25,71 @@
       <option value="bar">Bar (Столбчатый)</option>
       <option value="doughnut" selected>Doughnut (Пончик)</option>
       <option value="pie">Pie (Круговой)</option>
-      <option value="radar">Radar (Радарный)</option>
     </select>
   </div>
-
   <div class="form-group row">
     <div>
-      <label class="pp-label">Ширина (px)</label>
+      <label class="pp-label">Ширина</label>
       <input type="number" id="width" class="pp-input" value="500">
     </div>
     <div>
-      <label class="pp-label">Высота (px)</label>
+      <label class="pp-label">Высота</label>
       <input type="number" id="height" class="pp-input" value="350">
     </div>
   </div>
-
   <div class="form-group">
-    <label class="pp-label">Конфигурация датасетов (JSON)</label>
-    <textarea id="chartData" class="pp-input">[
-  {
-    "label": "Данные",
-    "data":,
-    "backgroundColor": ["#3B82F6", "#10B981", "#F59E0B"]
-  }
-]</textarea>
+    <label class="pp-label">Конфигурация (JSON)</label>
+    <textarea id="chartData" class="pp-input">[{"label":"Данные","data":[30,50,20],"backgroundColor":["#3B82F6","#10B981","#F59E0B"]}]</textarea>
   </div>
-
   <div class="form-group">
-    <label class="pp-label">Цвета (кликните для копирования HEX):</label>
-    <div id="tokensList" class="tokens-container">Инициализация токенов...</div>
+    <label class="pp-label">Цвета (клик для копирования):</label>
+    <div id="tokensList" class="tokens-container">Загрузка...</div>
   </div>
-
-  <button id="insertBtn" class="pp-btn pp-btn-primary" style="width: 100%; margin-top: 5px;">Вставить в макет</button>
-  
+  <button id="insertBtn" class="pp-btn pp-btn-primary" style="width: 100%;">Вставить в макет</button>
   <div class="btn-group">
     <button id="saveSvgBtn" class="pp-btn pp-btn-secondary" style="flex: 1;">Скачать SVG</button>
     <button id="savePngBtn" class="pp-btn pp-btn-secondary" style="flex: 1;">Скачать PNG</button>
   </div>
-
   <script>
     const API_URL = 'https://ezersky.ru';
-    
-    // Встроенный набор базовых цветов дизайн-системы (Tailwind UI) на случай, если в файле нет токенов
-    const DEFAULT_PALETTE = [
-      { name: "Синий", color: "#3B82F6" },
-      { name: "Зеленый", color: "#10B981" },
-      { name: "Оранжевый", color: "#F59E0B" },
-      { name: "Красный", color: "#EF4444" },
-      { name: "Фиолетовый", color: "#8B5CF6" },
-      { name: "Серый", color: "#6B7280" }
-    ];
-
-    // Сигнализируем основному файлу плагина, что UI готов к приему данных
-    window.onload = () => {
-      parent.postMessage({ type: 'ui-ready' }, '*');
-    };
-
-    // Слушаем сообщение со списком токенов от Penpot
-    window.addEventListener('message', (event) => {
-      const msg = event.data;
-      if (msg && msg.type === 'init-tokens') {
-        renderTokens(msg.tokens);
-      }
-    });
-
-    // Отрисовка токенов в контейнере
+    const DEFAULT_PALETTE = [{name:"Синий",color:"#3B82F6"},{name:"Зеленый",color:"#10B981"},{name:"Оранжевый",color:"#F59E0B"},{name:"Красный",color:"#EF4444"}];
+    window.onload = () => { parent.postMessage({ type: 'ui-ready' }, '*'); };
+    window.addEventListener('message', (e) => { if (e.data && e.data.type === 'init-tokens') renderTokens(e.data.tokens); });
     function renderTokens(tokens) {
-      const container = document.getElementById('tokensList');
-      container.innerHTML = '';
-
+      const container = document.getElementById('tokensList'); container.innerHTML = '';
       if (!tokens || tokens.length === 0) {
-        // Если токены в макете отсутствуют, выводим дефолтную безопасную палитру
-        const title = document.createElement('div');
-        title.className = 'fallback-title';
-        title.innerText = 'Палитра по умолчанию (в файле нет токенов):';
-        container.appendChild(title);
-        
-        DEFAULT_PALETTE.forEach(t => createTokenBadge(container, t));
-      } else {
-        // Если токены найдены, выводим их
-        tokens.forEach(t => createTokenBadge(container, t));
-      }
+        const t = document.createElement('div'); t.className = 'fallback-title'; t.innerText = 'Палитра (в ассетах пусто):'; container.appendChild(t);
+        DEFAULT_PALETTE.forEach(createBadge);
+      } else { tokens.forEach(createBadge); }
     }
-
-    // Создание кликабельной плашки цвета
-    function createTokenBadge(container, token) {
-      const badge = document.createElement('span');
-      badge.className = 'token-badge';
-      badge.style.borderLeft = `4px solid ${token.color}`;
-      badge.innerText = `${token.name} (${token.color})`;
-      badge.onclick = () => {
-        navigator.clipboard.writeText(token.color);
-      };
-      container.appendChild(badge);
+    function createBadge(t) {
+      const b = document.createElement('span'); b.className = 'token-badge'; b.style.borderLeft = `4px solid ${t.color}`; b.innerText = `${t.name} (${t.color})`;
+      b.onclick = () => navigator.clipboard.writeText(t.color); document.getElementById('tokensList').appendChild(b);
     }
-
-    // Сборка объекта параметров для отправки в API QuickChart
-    function buildConfig(formatType = 'svg') {
-      const type = document.getElementById('chartType').value;
-      const width = parseInt(document.getElementById('width').value) || 500;
-      const height = parseInt(document.getElementById('height').value) || 350;
-      let datasets = [];
-      
+    function buildConfig(fmt = 'svg') {
       try {
-        datasets = JSON.parse(document.getElementById('chartData').value);
-      } catch(e) {
-        alert('Ошибка валидации JSON датасетов! Проверьте запятые и кавычки.');
-        return null;
-      }
-
-      // Генерация базовых подписей осей в зависимости от количества переданных данных
-      const dataLength = (datasets[0] && datasets[0].data && datasets[0].data.length) || 4;
-      const labels = ["Пункт А", "Пункт Б", "Пункт В", "Пункт Г", "Пункт Д", "Пункт Е"].slice(0, dataLength);
-
-      return {
-        format: formatType,
-        width: width,
-        height: height,
-        chart: {
-          type: type,
-          data: {
-            labels: labels,
-            datasets: datasets
-          },
-          options: {
-            responsive: true,
-            // Для круговых диаграмм делаем аккуратное тонкое кольцо по умолчанию
-            cutoutPercentage: type === 'doughnut' ? 70 : 0 
-          }
-        }
-      };
+        const ds = JSON.parse(document.getElementById('chartData').value);
+        return { format: fmt, width: parseInt(document.getElementById('width').value), height: parseInt(document.getElementById('height').value),
+          chart: { type: document.getElementById('chartType').value, data: { labels: ["А","Б","В","Г"].slice(0, ds[0].data.length), datasets: ds }, options: { responsive: true } }
+        };
+      } catch(e) { alert('Ошибка JSON'); return null; }
     }
-
-    // Кнопка: Вставка объекта прямо на холст
     document.getElementById('insertBtn').onclick = async () => {
-      const config = buildConfig('svg');
-      if (!config) return;
-
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(config)
-        });
-        
-        if (!response.ok) throw new Error('Ошибка ответа сервера QuickChart');
-        const svgCode = await response.text();
-
-        // Передаем полученную SVG-строку в основной скрипт плагина для рендеринга
-        parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
-      } catch (err) {
-        alert('Не удалось сгенерировать чарт. Проверьте работу сервера qc.ezersky.ru');
-      }
+      const cfg = buildConfig('svg'); if (!cfg) return;
+      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+      parent.postMessage({ type: 'insert-chart', svgCode: await res.text() }, '*');
     };
-
-    // Кнопка: Скачать файл локально в формате .svg
     document.getElementById('saveSvgBtn').onclick = async () => {
-      const config = buildConfig('svg');
-      if (!config) return;
-      
-      try {
-        const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
-        const text = await response.text();
-        downloadFile(text, 'chart.svg', 'image/svg+xml');
-      } catch (e) { alert('Ошибка скачивания SVG'); }
+      const cfg = buildConfig('svg'); if (!cfg) return;
+      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+      download(await res.text(), 'chart.svg', 'image/svg+xml');
     };
-
-    // Кнопка: Скачать файл локально в формате прозрачного .png
     document.getElementById('savePngBtn').onclick = async () => {
-      const config = buildConfig('png');
-      if (!config) return;
-      
-      try {
-        const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'chart.png';
-        a.click();
-      } catch (e) { alert('Ошибка скачивания PNG'); }
+      const cfg = buildConfig('png'); if (!cfg) return;
+      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+      const u = window.URL.createObjectURL(await res.blob()); const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
     };
-
-    function downloadFile(content, fileName, contentType) {
-      const a = document.createElement("a");
-      const file = new Blob([content], {type: contentType});
-      a.href = URL.createObjectURL(file);
-      a.download = fileName;
-      a.click();
-    }
+    function download(c, f, m) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([c], {type: m})); a.download = f; a.click(); }
   </script>
 </body>
 </html>
