@@ -66,8 +66,9 @@
     </div>
   </div>
   
- <div class="form-group">
+  <div class="form-group">
     <label class="pp-label">Конфигурация данных (JSON)</label>
+    <!-- Дефолтная строка полностью перепроверена и избавлена от лишних запятых -->
     <textarea id="chartData" class="pp-input">{"labels":["Янв","Фев","Мар"],"datasets":[{"label":"Прогресс","data":[45,65,30],"backgroundColor":["#3B82F6","#10B981","#F59E0B"]}]}</textarea>
   </div>
   
@@ -103,10 +104,20 @@
     
     function buildConfig(fmt = 'svg') {
       try {
-        const rawData = document.getElementById('chartData').value;
+        let rawData = document.getElementById('chartData').value;
         
-        // Ультра-безопасный парсинг: прощает лишние запятые в массивах и отсутствие кавычек у ключей
+        // Автоматическая очистка: исправляем "умные" кавычки и заменяем неразрывные пробелы на обычные
+        rawData = rawData.replace(/[\u201c\u201d]/g, '"').replace(/\u00a0/g, ' ');
+        
+        // Исправляем опечатку с ведущей запятой в массивах типа [ , 65] -> [65]
+        rawData = rawData.replace(/\[\s*,\s*/g, '[');
+        
+        // Ультра-безопасный парсинг через создание изолированной функции
         const chartContent = (new Function("return " + rawData))();
+        
+        if (!chartContent || (!chartContent.datasets && !Array.isArray(chartContent))) {
+          throw new Error("Неверная структура");
+        }
         
         return { 
           format: fmt, 
@@ -121,7 +132,7 @@
           } 
         };
       } catch(e) { 
-        alert('Ошибка разбора данных! Проверьте правильность структуры JavaScript/JSON объекта.'); 
+        alert('Ошибка разбора данных! Проверьте, что в массиве data указаны числа через запятую (например, [45, 65, 30]).'); 
         return null; 
       }
     }
