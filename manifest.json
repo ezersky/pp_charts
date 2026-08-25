@@ -2,7 +2,7 @@
   "name": "QuickChart Generator",
   "description": "Генерация SVG-чартов через self-hosted QuickChart с поддержкой дизайн-токенов",
   "version": 2,
-  "code": "plugin.js?v=1.0.5",
+  "code": "plugin.js?v=1.0.7",
   "icon": "icon.png",
   "permissions": [
     "library:read",
