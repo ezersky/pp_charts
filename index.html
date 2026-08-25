@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>QuickChart UI</title>
   <style>
-    /* Встроенные нативные стили Penpot UI во избежание блокировок MIME/CDN */
     body { 
       padding: 16px; 
       margin: 0; 
@@ -49,9 +48,9 @@
   <div class="form-group">
     <label class="pp-label">Тип чарта</label>
     <select id="chartType" class="pp-select">
-      <option value="line" selected>Line (Линейный)</option>
+      <option value="line">Line (Линейный)</option>
       <option value="bar">Bar (Столбчатый)</option>
-      <option value="doughnut">Doughnut (Пончик)</option>
+      <option value="doughnut" selected>Doughnut (Пончик)</option>
       <option value="pie">Pie (Круговой)</option>
     </select>
   </div>
@@ -85,8 +84,6 @@
   </div>
 
   <script>
-    /* ВАЖНО: Укажите точный поддомен вашего запущенного QuickChart контейнера */
-    const API_URL = 'https://qc.ezersky.ru';
     const DEFAULT_PALETTE = [{name:"Синий",color:"#3B82F6"},{name:"Зеленый",color:"#10B981"},{name:"Оранжевый",color:"#F59E0B"},{name:"Красный",color:"#EF4444"}];
     
     window.onload = () => { renderTokens([]); };
@@ -108,8 +105,14 @@
       try {
         const rawData = document.getElementById('chartData').value;
         const datasets = JSON.parse(rawData);
-        const firstDataset = datasets[0] || { data: [] };
-        const dataLength = firstDataset.data ? firstDataset.data.length : 3;
+        
+        // Безопасное определение количества точек данных
+        let dataLength = 3;
+        if (datasets && datasets[0] && datasets[0].data) {
+          dataLength = datasets[0].data.length;
+        } else if (datasets && datasets.data) {
+          dataLength = datasets.data.length;
+        }
         
         return { 
           format: fmt, 
@@ -118,24 +121,25 @@
           chart: { 
             type: document.getElementById('chartType').value, 
             data: { 
-              labels: ["А","Б","В","Г","Д","Е"].slice(0, dataLength), 
+              labels: ["А","Б","В","Г","Д","Е","Ж","З"].slice(0, dataLength), 
               datasets: datasets 
             }, 
             options: { responsive: true } 
           } 
         };
       } catch(e) { 
-        alert('Ошибка в формате JSON!'); 
+        alert('Ошибка валидации JSON в поле Конфигурация!'); 
         return null; 
       }
     }
     
+    // Прямой вызов защищенного API qc.ezersky.ru
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
       if (!cfg) return;
       
       try {
-        const res = await fetch(API_URL, { 
+        const res = await fetch('https://qc.ezersky.ru', { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify(cfg) 
@@ -144,14 +148,14 @@
         const svgCode = await res.text();
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер не ответил. Убедитесь, что в Nginx для qc.ezersky.ru добавлены CORS-заголовки (актуально для запросов из github.io).');
+        alert('Сервер qc.ezersky.ru не вернул данные. Проверьте CORS-заголовки.');
       }
     };
     
     document.getElementById('saveSvgBtn').onclick = async () => {
       const cfg = buildConfig('svg'); if (!cfg) return;
       try {
-        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        const res = await fetch('https://qc.ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         download(await res.text(), 'chart.svg', 'image/svg+xml');
       } catch(e) { alert('Ошибка скачивания SVG'); }
     };
@@ -159,7 +163,7 @@
     document.getElementById('savePngBtn').onclick = async () => {
       const cfg = buildConfig('png'); if (!cfg) return;
       try {
-        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        const res = await fetch('https://qc.ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         const blob = await res.blob();
         const u = window.URL.createObjectURL(blob); 
         const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
