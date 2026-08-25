@@ -106,17 +106,26 @@
       try {
         let rawData = document.getElementById('chartData').value;
         
-        // Автоматическая очистка: исправляем "умные" кавычки и заменяем неразрывные пробелы на обычные
-        rawData = rawData.replace(/[\u201c\u201d]/g, '"').replace(/\u00a0/g, ' ');
+        // 1. Декодируем возможные HTML-сущности (например, если браузер превратил кавычки в &quot;)
+        const txt = document.createElement("textarea");
+        txt.innerHTML = rawData;
+        rawData = txt.value;
         
-        // Исправляем опечатку с ведущей запятой в массивах типа [ , 65] -> [65]
+        // 2. Очищаем текст от "умных" кавычек, неразрывных пробелов и скрытых символов
+        rawData = rawData.replace(/[\u201c\u201d\u201e\u201f\u00ab\u00bb]/g, '"') // кавычки
+                         .replace(/[\u2018\u2019\u201a\u201b]/g, "'") // одинарные кавычки
+                         .replace(/\u00a0/g, ' ') // неразрывные пробелы
+                         .replace(/\s+/g, ' ') // лишние пробелы и переносы
+                         .trim();
+        
+        // 3. Автоматически исправляем частую опечатку с ведущей запятой в массивах типа [ , 45] -> [45]
         rawData = rawData.replace(/\[\s*,\s*/g, '[');
         
-        // Ультра-безопасный парсинг через создание изолированной функции
+        // 4. Безопасный парсинг через изолированную функцию
         const chartContent = (new Function("return " + rawData))();
         
-        if (!chartContent || (!chartContent.datasets && !Array.isArray(chartContent))) {
-          throw new Error("Неверная структура");
+        if (!chartContent) {
+          throw new Error("Пустой объект");
         }
         
         return { 
@@ -132,10 +141,11 @@
           } 
         };
       } catch(e) { 
-        alert('Ошибка разбора данных! Проверьте, что в массиве data указаны числа через запятую (например, [45, 65, 30]).'); 
+        alert('Ошибка разбора данных! Пожалуйста, перепроверьте правильность расстановки фигурных скобок и кавычек в поле конфигурации.'); 
         return null; 
       }
     }
+
     
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
