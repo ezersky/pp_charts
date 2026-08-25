@@ -60,7 +60,6 @@
     </div>
   </div>
   
-  <!-- Простые интуитивные поля вместо страшного JSON -->
   <div class="form-group">
     <label class="pp-label">Данные графика (через запятую)</label>
     <input type="text" id="chartDataValues" class="pp-input" value="45, 65, 30">
@@ -79,13 +78,10 @@
   </div>
 
   <script>
-    // Генерация конфигурации полностью программно: никаких JSON.parse и опечаток!
     function buildConfig(fmt = 'svg') {
-      // Читаем числовые данные
       const rawValues = document.getElementById('chartDataValues').value;
       const dataArray = rawValues.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
       
-      // Читаем текстовые подписи
       const rawLabels = document.getElementById('chartLabels').value;
       const labelsArray = rawLabels.split(',').map(l => l.trim()).filter(l => l.length > 0);
 
@@ -114,12 +110,10 @@
       };
     }
     
+    // Вставка чарта на холст Penpot (Обращение строго к /chart поддомена)
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
-      
       try {
-        // Отправляем запрос в формате, который QuickChart гарантированно понимает 
-        // без дополнительных модулей парсинга JSON в Nginx
         const res = await fetch('https://qc.ezersky.ru', { 
           method: 'POST', 
           headers: { 
@@ -128,25 +122,15 @@
           }, 
           body: JSON.stringify(cfg) 
         });
-        
-        if (!res.ok) {
-          throw new Error('Код ответа сервера: ' + res.status);
-        }
-        
+        if (!res.ok) throw new Error();
         const svgCode = await res.text();
-        
-        // Проверяем, что сервер вернул именно SVG, а не текст ошибки
-        if (!svgCode.includes('<svg')) {
-          throw new Error('Сервер вернул невалидный SVG');
-        }
-
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен, или проверьте вкладку Network в F12.');
+        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен.');
       }
     };
-
     
+    // Скачивание SVG файла (Обращение строго к /chart поддомена)
     document.getElementById('saveSvgBtn').onclick = async () => {
       const cfg = buildConfig('svg');
       try {
@@ -155,6 +139,7 @@
       } catch(e) { alert('Ошибка скачивания SVG'); }
     };
     
+    // Скачивание PNG файла (Обращение строго к /chart поддомена)
     document.getElementById('savePngBtn').onclick = async () => {
       const cfg = buildConfig('png');
       try {
