@@ -68,7 +68,15 @@
   
   <div class="form-group">
     <label class="pp-label">Конфигурация (JSON)</label>
-    <textarea id="chartData" class="pp-input">[{"label":"Данные","data":[30,50,20],"backgroundColor":["#3B82F6","#10B981","#F59E0B"]}]</textarea>
+    <textarea id="chartData" class="pp-input">{
+  "datasets": [
+    {
+      "label": "Данные",
+      "data":,
+      "backgroundColor": ["#3B82F6", "#10B981", "#F59E0B"]
+    }
+  ]
+}</textarea>
   </div>
   
   <div class="form-group">
@@ -104,11 +112,14 @@
     function buildConfig(fmt = 'svg') {
       try {
         const rawData = document.getElementById('chartData').value;
-        const datasets = JSON.parse(rawData);
+        const parsed = JSON.parse(rawData);
         
-        // Корректное и безопасное определение длины подписей для массива объектов
+        // Проверяем, передан ли массив или объект с datasets
+        const datasets = parsed.datasets ? parsed.datasets : (Array.isArray(parsed) ? parsed : [parsed]);
+        
+        // Безопасное определение количества точек данных для подписей
         let dataLength = 3;
-        if (Array.isArray(datasets) && datasets[0] && Array.isArray(datasets[0].data)) {
+        if (datasets && datasets[0] && Array.isArray(datasets[0].data)) {
           dataLength = datasets[0].data.length;
         }
         
@@ -119,20 +130,23 @@
           chart: { 
             type: document.getElementById('chartType').value, 
             data: { 
-              labels: ["А","Б","В","Г","Д","Е","Ж","З"].slice(0, dataLength), 
+              labels: ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг"].slice(0, dataLength), 
               datasets: datasets 
             }, 
             options: { 
               responsive: true,
-              legend: { position: 'bottom' }
+              plugins: {
+                legend: { position: 'bottom' }
+              }
             } 
           } 
         };
       } catch(e) { 
-        alert('Ошибка валидации JSON в поле Конфигурация! Убедитесь, что это массив [ { ... } ]'); 
+        alert('Ошибка валидации JSON! Убедитесь, что структура корректна.'); 
         return null; 
       }
     }
+
     
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
