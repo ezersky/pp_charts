@@ -3,33 +3,9 @@ penpot.ui.open("QuickChart Generator", "index.html", {
   height: 540
 });
 
-function getColorTokens() {
-  var colorsList = [];
-  try {
-    if (penpot && penpot.library && penpot.library.local && Array.isArray(penpot.library.local.colors)) {
-      var localColors = penpot.library.local.colors;
-      for (var i = 0; i < localColors.length; i++) {
-        var c = localColors[i];
-        if (c && c.name && c.color) {
-          colorsList.push({ name: c.name, color: c.color });
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("Ошибка чтения цветов Penpot:", e);
-  }
-  return colorsList;
-}
-
+// Просто перенаправляем SVG-код из UI на холст
 penpot.ui.onMessage(function(message) {
-  if (!message) return;
-
-  if (message.type === "ui-ready") {
-    var tokens = getColorTokens();
-    penpot.ui.sendMessage({ type: "init-tokens", tokens: tokens });
-  }
-
-  if (message.type === "insert-chart" && message.svgCode) {
+  if (message && message.type === "insert-chart" && message.svgCode) {
     try {
       var shape = penpot.createShapeFromSvg(message.svgCode);
       if (shape) {
