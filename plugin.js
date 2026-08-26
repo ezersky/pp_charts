@@ -1,9 +1,9 @@
 penpot.ui.open("QuickChart Generator", "index.html", {
   width: 380,
-  height: 460 
+  height: 540
 });
 
-// Перенаправляем SVG-код из UI на холст
+// Просто перенаправляем SVG-код из UI на холст
 penpot.ui.onMessage(function(message) {
   if (message && message.type === "insert-chart" && message.svgCode) {
     try {
