@@ -114,7 +114,7 @@
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
       try {
-        const res = await fetch('https://qc.ezersky.ru', { 
+        const res = await fetch('https://qc.ezersky.ru/chart', { 
           method: 'POST', 
           headers: { 
             'Content-Type': 'application/json',
@@ -134,7 +134,7 @@
     document.getElementById('saveSvgBtn').onclick = async () => {
       const cfg = buildConfig('svg');
       try {
-        const res = await fetch('https://qc.ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         download(await res.text(), 'chart.svg', 'image/svg+xml');
       } catch(e) { alert('Ошибка скачивания SVG'); }
     };
@@ -143,7 +143,7 @@
     document.getElementById('savePngBtn').onclick = async () => {
       const cfg = buildConfig('png');
       try {
-        const res = await fetch('https://qc.ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         const blob = await res.blob();
         const u = window.URL.createObjectURL(blob); 
         const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
