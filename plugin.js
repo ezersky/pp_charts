@@ -1,53 +1,45 @@
-penpot.ui.open("QuickChart Generator", "index.html", {
-  width: 380,
-  height: 540
-});
-
-// Слушаем сообщения из UI плагина
-penpot.ui.onMessage(function(message) {
-  
-  // ОБРАБОТКА ЗАПРОСА ЦВЕТОВЫХ ТОКЕНОВ
+  // ОБРАБОТКА ЗАПРОСА ЦВЕТОВЫХ ТОКЕНОВ (Исправлено под Темы и Наборы)
   if (message && message.type === "get-color-tokens") {
     try {
-      const tokens = penpot.getColorTokens(); 
-      
-      const formattedTokens = tokens.map(function(t) {
-        // Защита: извлекаем чистую строку (HEX/RGBA) из объекта Penpot
-        var colorValue = typeof t.value === 'object' && t.value ? t.value.color : t.value;
-        
-        // Если значение всё еще объект, пробуем взять строковое представление
-        if (!colorValue && t.resolvedValueString) {
-          colorValue = t.resolvedValueString;
-        }
+      // 1. Получаем все доступные наборы токенов (Sets) в файле
+      const tokenSets = penpot.getTokenSets(); 
+      let allTokens = [];
 
-        return {
-          name: t.name || "Без названия",
-          value: colorValue || "#3B82F6" // Резервный синий, если цвет не прочитался
-        };
+      tokenSets.forEach(function(set) {
+        // Читаем цвета отдельно из каждого набора токенов (Global, Light и т.д.)
+        if (set.colors) {
+          set.colors.forEach(function(t) {
+            // Извлекаем текстовое значение цвета (HEX/RGBA)
+            var colorValue = typeof t.value === 'object' && t.value ? t.value.color : t.value;
+            if (!colorValue && t.resolvedValueString) {
+              colorValue = t.resolvedValueString;
+            }
+
+            allTokens.push({
+              // Добавляем имя набора в путь токена, чтобы index.html правильно его разбил по папкам
+              name: set.name + "/" + (t.name || "Без названия"),
+              value: colorValue || "#3B82F6"
+            });
+          });
+        }
       });
 
-      // Отправляем обратно в UI
+      // Если через наборы ничего не нашлось, пробуем взять обычные токены
+      if (allTokens.length === 0) {
+        const fallbackTokens = penpot.getColorTokens();
+        allTokens = fallbackTokens.map(function(t) {
+          var colorValue = typeof t.value === 'object' && t.value ? t.value.color : t.value;
+          return { name: "Общие палитры/" + (t.name || "Без названия"), value: colorValue || "#3B82F6" };
+        });
+      }
+
+      // Отправляем структурированный массив обратно в интерфейс
       penpot.ui.sendMessage({
         type: "response-color-tokens",
-        tokens: formattedTokens
+        tokens: allTokens
       });
     } catch (err) {
       console.error("Ошибка получения токенов цвета Penpot:", err);
       penpot.ui.sendMessage({ type: "response-color-tokens", tokens: [] });
     }
   }
-
-  // ВСТАВКА SVG НА ХОЛСТ
-  if (message && message.type === "insert-chart" && message.svgCode) {
-    try {
-      var shape = penpot.createShapeFromSvg(message.svgCode);
-      if (shape) {
-        shape.x = penpot.viewport.center.x - (shape.width / 2);
-        shape.y = penpot.viewport.center.y - (shape.height / 2);
-        penpot.selection = [shape];
-      }
-    } catch (err) {
-      console.error("Ошибка импорта SVG:", err);
-    }
-  }
-});
