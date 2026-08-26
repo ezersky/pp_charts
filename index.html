@@ -84,84 +84,13 @@
   </div>
 
   <script>
-    let penpotColorTokens = {};
 
-    function getAlphaColor(hex, opacity) {
+function getAlphaColor(hex, opacity) {
       if (!hex || !hex.startsWith('#')) return hex || "#3B82F6";
       let clean = hex.replace('#', '');
       if (clean.length === 3) clean = clean.split('').map(s => s + s).join('');
       const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
       return '#' + clean + alpha;
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      parent.postMessage({ type: 'get-color-tokens' }, '*');
-    });
-
-    window.addEventListener('message', (event) => {
-      const message = event.data;
-      if (message && message.type === 'response-color-tokens' && message.tokens) {
-        parseTokens(message.tokens);
-      }
-    });
-
-    function parseTokens(tokens) {
-      penpotColorTokens = {};
-      
-      if (!tokens || tokens.length === 0) {
-        const groupSelect = document.getElementById('tokenGroup');
-        groupSelect.innerHTML = '<option value="">В файле нет токенов цвета</option>';
-        return;
-      }
-
-      tokens.forEach(token => {
-        const parts = token.name.split('/');
-        const groupName = parts.length > 1 ? parts[0].trim() : 'Общие палитры';
-        const colorName = parts.length > 1 ? parts.slice(1).join('/') : token.name;
-
-        if (!penpotColorTokens[groupName]) {
-          penpotColorTokens[groupName] = [];
-        }
-        penpotColorTokens[groupName].push({ name: colorName, value: token.value });
-      });
-
-      updateGroupSelect();
-    }
-
-    function updateGroupSelect() {
-      const groupSelect = document.getElementById('tokenGroup');
-      groupSelect.innerHTML = '<option value="">-- Не выбрано (Дефолт) --</option>';
-
-      Object.keys(penpotColorTokens).forEach(group => {
-        const option = document.createElement('option');
-        option.value = group;
-        option.textContent = group;
-        groupSelect.appendChild(option);
-      });
-
-      updateColorSelect();
-    }
-
-    document.getElementById('tokenGroup').onchange = updateColorSelect;
-
-    function updateColorSelect() {
-      const groupSelect = document.getElementById('tokenGroup');
-      const colorSelect = document.getElementById('tokenColor');
-      const selectedGroup = groupSelect.value;
-
-      colorSelect.innerHTML = '';
-
-      if (!selectedGroup || !penpotColorTokens[selectedGroup]) {
-        colorSelect.innerHTML = '<option value="">Выберите набор...</option>';
-        return;
-      }
-
-      penpotColorTokens[selectedGroup].forEach(token => {
-        const option = document.createElement('option');
-        option.value = token.value;
-        option.textContent = token.name + " (" + token.value + ")";
-        colorSelect.appendChild(option);
-      });
     }
 
     function buildConfig(fmt = 'svg') {
@@ -172,16 +101,11 @@
       const labelsArray = rawLabels.split(',').map(l => l.trim()).filter(l => l.length > 0);
 
       const type = document.getElementById('chartType').value;
-      const selectedTokenColor = document.getElementById('tokenColor').value;
 
       const rawColors = document.getElementById('chartColors').value;
       let additionalColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
       
-      let finalPalette = [];
-      if (selectedTokenColor) {
-        finalPalette.push(selectedTokenColor);
-      }
-      finalPalette = finalPalette.concat(additionalColors);
+      let finalPalette = [].concat(additionalColors);
 
       if (finalPalette.length === 0) {
         finalPalette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
