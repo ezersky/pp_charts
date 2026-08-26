@@ -70,6 +70,12 @@
     <label class="pp-label">Подписи осей (через запятую)</label>
     <input type="text" id="chartLabels" class="pp-input" value="Янв, Фев, Мар">
   </div>
+
+  <!-- НОВОЕ ПОЛЕ: Настройки цветов чарта -->
+  <div class="form-group">
+    <label class="pp-label">Цвета чарта (HEX через запятую)</label>
+    <input type="text" id="chartColors" class="pp-input" value="#3B82F6, #10B981, #F59E0B">
+  </div>
   
   <button id="insertBtn" class="pp-btn pp-btn-primary" style="width: 100%; height: 36px; border-radius: 4px;">Вставить в макет</button>
   
@@ -88,33 +94,48 @@
 
       const type = document.getElementById('chartType').value;
 
+      // Обработка пользовательских цветов из инпута
+      const rawColors = document.getElementById('chartColors').value;
+      let userColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      
+      // Дефолтная палитра на случай, если поле очистили
+      if (userColors.length === 0) {
+        userColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
+      }
+
       // Базовые настройки датасета
       const dataset = {
         label: "Показатели",
         data: dataArray
       };
 
-      // Распределяем цвета в зависимости от типа чарта
+      // Распределяем цвета в зависимости от выбранного типа
       if (type === 'pie' || type === 'doughnut') {
-        // Для круговых чартов возвращаем ваш исходный массив цветов для каждого сектора
-        dataset.backgroundColor = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"].slice(0, dataArray.length);
+        // Для круговых чартов отдаем массив цветов на каждый сектор
+        dataset.backgroundColor = userColors.slice(0, dataArray.length);
       } else if (type === 'line') {
-        // Для линейного — один цвет обводки, прозрачная заливка
-        dataset.borderColor = "#3B82F6";
-        dataset.backgroundColor = "rgba(59, 130, 246, 0.1)";
+        // Для линейного — первый цвет из списка становится линией
+        const primaryColor = userColors[0] || "#3B82F6";
+        dataset.borderColor = primaryColor;
+        dataset.backgroundColor = primaryColor + "1A"; // Альфа-канал 10% прозрачности для заливки зоны под линией
         dataset.fill = false;
       } else if (type === 'radar') {
-        // Для радара — цвет контура и легкая полупрозрачная заливка
-        dataset.borderColor = "#3B82F6";
-        dataset.backgroundColor = "rgba(59, 130, 246, 0.2)";
+        // Для радара — первый цвет контур, легкая заливка
+        const primaryColor = userColors[0] || "#3B82F6";
+        dataset.borderColor = primaryColor;
+        dataset.backgroundColor = primaryColor + "33"; // Альфа-канал 20% прозрачности
         dataset.fill = true;
       } else {
-        // Для столбчатого (bar) — сплошной красивый синий цвет
-        dataset.backgroundColor = "#3B82F6";
+        // Для столбчатого (bar) — красим столбцы в один цвет или в разные в зависимости от количества переданных цветов
+        if (userColors.length >= dataArray.length) {
+          dataset.backgroundColor = userColors.slice(0, dataArray.length);
+        } else {
+          dataset.backgroundColor = userColors[0] || "#3B82F6";
+        }
         dataset.fill = true;
       }
 
-      // Отключаем декартовы сетки осей для круговых и радарных графиков, чтобы не ломать отображение
+      // Отключаем сетку осей координат для круговых и радарных графиков
       const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
         yAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }],
         xAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }]
