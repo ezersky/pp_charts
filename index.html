@@ -61,7 +61,6 @@
     </div>
   </div>
 
-  <!-- Связанные селекты для Токенов Цветов из Penpot -->
   <div class="form-group row">
     <div>
       <label class="pp-label">Набор токенов</label>
@@ -100,30 +99,33 @@
   </div>
 
   <script>
-    // Хранилище для полученных из Penpot данных о токенах
     let penpotColorTokens = {};
 
-    // Запрашиваем токены у Penpot сразу при старте плагина
     window.addEventListener('DOMContentLoaded', () => {
+      // Запрашиваем токены у плагина
       parent.postMessage({ type: 'get-color-tokens' }, '*');
     });
 
-    // Слушаем ответ от Penpot с массивом токенов
     window.addEventListener('message', (event) => {
       const message = event.data;
-      if (message.type === 'response-color-tokens' && message.tokens) {
+      if (message && message.type === 'response-color-tokens' && message.tokens) {
         parseTokens(message.tokens);
       }
     });
 
-    // Сортируем токены по их группам (палитрам)
     function parseTokens(tokens) {
       penpotColorTokens = {};
       
+      if (!tokens || tokens.length === 0) {
+        const groupSelect = document.getElementById('tokenGroup');
+        groupSelect.innerHTML = '<option value="">В файле нет токенов цвета</option>';
+        return;
+      }
+
       tokens.forEach(token => {
-        // Предполагаем структуру токена Penpot: { name: "Brand/Primary", value: "#3B82F6" }
         const parts = token.name.split('/');
-        const groupName = parts.length > 1 ? parts[0] : 'Общие';
+        // Исправлено: жестко контролируем имя группы, чтобы не было пустых строк
+        const groupName = parts.length > 1 ? parts[0].trim() : 'Общие палитры';
         const colorName = parts.length > 1 ? parts.slice(1).join('/') : token.name;
 
         if (!penpotColorTokens[groupName]) {
@@ -135,7 +137,6 @@
       updateGroupSelect();
     }
 
-    // Обновляем первый select (Наборы токенов)
     function updateGroupSelect() {
       const groupSelect = document.getElementById('tokenGroup');
       groupSelect.innerHTML = '<option value="">-- Не выбрано (Дефолт) --</option>';
@@ -150,7 +151,6 @@
       updateColorSelect();
     }
 
-    // Обновляем второй select (Токены внутри выбранного набора) при изменении первого
     document.getElementById('tokenGroup').onchange = updateColorSelect;
 
     function updateColorSelect() {
@@ -168,7 +168,7 @@
       penpotColorTokens[selectedGroup].forEach(token => {
         const option = document.createElement('option');
         option.value = token.value;
-        option.textContent = `${token.name} (${token.value})`;
+        option.textContent = token.name + " (" + token.value + ")";
         colorSelect.appendChild(option);
       });
     }
@@ -181,24 +181,17 @@
       const labelsArray = rawLabels.split(',').map(l => l.trim()).filter(l => l.length > 0);
 
       const type = document.getElementById('chartType').value;
-
-      // Получаем выбранный из токенов основной цвет
       const selectedTokenColor = document.getElementById('tokenColor').value;
 
-      // Считываем дополнительные цвета из инпута
       const rawColors = document.getElementById('chartColors').value;
       let additionalColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
       
-      // Формируем итоговую палитру цветов
       let finalPalette = [];
       if (selectedTokenColor) {
-        // Если выбран цвет-токен, он становится ПЕРВЫМ в палитре
         finalPalette.push(selectedTokenColor);
       }
-      // Добиваем палитру дополнительными цветами
       finalPalette = finalPalette.concat(additionalColors);
 
-      // Если палитра всё еще пуста, используем стандартную резервную
       if (finalPalette.length === 0) {
         finalPalette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
       }
@@ -208,7 +201,6 @@
         data: dataArray
       };
 
-      // Применяем собранную палитру к типам графиков
       if (type === 'pie' || type === 'doughnut') {
         dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
       } else if (type === 'line') {
@@ -271,3 +263,32 @@
         const svgCode = await res.text();
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
+        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен.');
+      }
+    };
+    
+    document.getElementById('saveSvgBtn').onclick = async () => {
+      const cfg = buildConfig('svg');
+      try {
+        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        download(await res.text(), 'chart.svg', 'image/svg+xml');
+      } catch(e) { alert('Ошибка скачивания SVG'); }
+    };
+    
+    document.getElementById('savePngBtn').onclick = async () => {
+      const cfg = buildConfig('png');
+      try {const res = await fetch('ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        const blob = await res.blob();
+        const u = window.URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
+      } catch(e) { 
+        alert('Ошибка скачивания PNG'); }
+      };
+      function download(c, f, m) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([c], {
+          type: m
+        }));
+        a.download = f;a.click();
+    }
+    
