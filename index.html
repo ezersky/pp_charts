@@ -119,12 +119,10 @@
 
       const mainColor = finalPalette[0] || "#3B82F6";
 
-      // ИСПРАВЛЕНА ЛОГИКА ЦВЕТОВ ДЛЯ ВСЕХ ТИПОВ ЧАРТОВ:
+      // ИСПРАВЛЕНО: строго обрезаем массив цветов по длине массива данных (dataArray.length)
       if (type === 'pie' || type === 'doughnut' || type === 'bar') {
-        // Для Pie, Doughnut и Bar передаем массив цветов попериодно на каждый сектор/столбец
         dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
       } else if (type === 'line' || type === 'radar') {
-        // Для Line и Radar используем один цвет обводки и легкую прозрачную заливку
         dataset.borderColor = mainColor;
         dataset.backgroundColor = getAlphaColor(mainColor, type === 'line' ? 0.1 : 0.2);
         dataset.fill = (type === 'radar');
@@ -132,6 +130,7 @@
         dataset.backgroundColor = mainColor;
         dataset.fill = true;
       }
+
 
       // Настройка осей: делаем текст тёмным (#333333) для светлого холста
       const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
