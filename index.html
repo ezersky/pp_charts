@@ -122,40 +122,83 @@
     }
 
     function buildConfig(fmt = 'svg') {
-  // 1. Получение и обработка данных
-  const dataArray = document.getElementById('chartDataValues').value.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-  
-  // 2. Обработка лейблов с исправлением (обрезание под длину данных)
-  let labelsArray = document.getElementById('chartLabels').value.split(',').map(l => l.trim()).filter(l => l.length > 0);
-  labelsArray = labelsArray.slice(0, dataArray.length);
+      const type = document.getElementById('chartType').value;
+      const rawColors = document.getElementById('chartColors').value;
+      
+      // Палитра цветов по умолчанию
+      let palette = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      if (palette.length === 0) palette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
 
-  // 3. Настройки типа и цветов
-  const type = document.getElementById('chartType').value;
-  const rawColors = document.getElementById('chartColors').value;
-  let palette = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
-  if (palette.length === 0) palette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
+      // 1. Получение и обработка данных 1-го датасета
+      const dataArray1 = document.getElementById('chartDataValues').value.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+      const label1 = document.getElementById('datasetLabel1').value || "Показатели 1";
+      
+      const dataset1 = { 
+        label: label1, 
+        data: dataArray1,
+        yAxisID: type === 'bar' ? 'y-axis-1' : undefined 
+      };
 
-  const dataset = { label: "Показатели", data: dataArray };
+      // Логика цветов для 1-го датасета
+      if (['pie', 'doughnut', 'bar'].includes(type)) {
+        dataset1.backgroundColor = type === 'bar' ? palette[0] : palette.slice(0, dataArray1.length);
+      } else {
+        dataset1.borderColor = palette[0];
+        dataset1.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+      }
 
-  // 4. Логика цветов для разных типов чартов
-  if (['pie', 'doughnut', 'bar'].includes(type)) {
-    dataset.backgroundColor = palette.slice(0, dataArray.length);
-  } else {
-    dataset.borderColor = palette[0];
-    dataset.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-  }
+      const datasets = [dataset1];
+      let scalesConfig = {};
+      let maxDataLength = dataArray1.length;
 
-  // 5. Конфигурация QuickChart
-  return { 
-    format: fmt, 
-    chart: { 
-      type: type, 
-      data: { labels: labelsArray, datasets: [dataset] },
-      options: { /* настройки осей и легенды */ } 
-    } 
-  };
-}
+      // 2. Если выбран тип BAR, добавляем второй датасет и настраиваем оси
+      if (type === 'bar') {
+        const dataArray2 = document.getElementById('chartDataValues2').value.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+        const label2 = document.getElementById('datasetLabel2').value || "Показатели 2";
+        
+        const dataset2 = {
+          label: label2,
+          data: dataArray2,
+          backgroundColor: palette[1] || '#F59E0B',
+          yAxisID: 'y-axis-2'
+        };
+        
+        datasets.push(dataset2);
+        
+        // Считаем максимальную длину среди двух массивов, чтобы подписи осей не резались
+        maxDataLength = Math.max(dataArray1.length, dataArray2.length);
 
+        // Двойная ось Y для столбчатого чарта
+        scalesConfig = {
+          yAxes: [
+            { id: 'y-axis-1', type: 'linear', position: 'left' },
+            { id: 'y-axis-2', type: 'linear', position: 'right', gridLines: { drawOnChartArea: false } }
+          ]
+        };
+      }
+
+      // 3. Обработка подписей (X-axis labels) без ограничения в 8 элементов
+      let labelsArray = document.getElementById('chartLabels').value.split(',').map(l => l.trim()).filter(l => l.length > 0);
+      
+      // Автозаполнение подписей, если пользователь ввел данных больше, чем подписей
+      while (labelsArray.length < maxDataLength) {
+        labelsArray.push(`${labelsArray.length + 1}`);
+      }
+      // Обрезаем массив подписей ровно под максимальное количество элементов данных
+      labelsArray = labelsArray.slice(0, maxDataLength);
+
+      // 4. Итоговая конфигурация QuickChart
+      return { 
+        format: fmt, 
+        chart: { 
+          type: type, 
+          data: { labels: labelsArray, datasets: datasets },
+          options: { 
+            scales: scalesConfig
+          } 
+        } 
+      };
+    }
     
     // Вставка чарта на холст Penpot
     document.getElementById('insertBtn').onclick = async () => {
@@ -208,7 +251,7 @@
       a.download = f;
       a.click();
     }
-  </script>
+</script>
 
 </body>
 </html>
