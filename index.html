@@ -136,9 +136,16 @@
       }
 
       // Отключаем сетку осей координат для круговых и радарных графиков
+       // Настройка осей: делаем текст тёмным (#333333), чтобы он читался на белом холсте
       const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
-        yAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }],
-        xAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }]
+        yAxes: [{ 
+          gridLines: { color: 'rgba(0, 0, 0, 0.05)' }, 
+          ticks: { fontColor: '#333333', fontSize: 12 } 
+        }],
+        xAxes: [{ 
+          gridLines: { color: 'rgba(0, 0, 0, 0.05)' }, 
+          ticks: { fontColor: '#333333', fontSize: 12 } 
+        }]
       };
 
       return { 
@@ -153,8 +160,9 @@
           },
           options: { 
             responsive: true,
+            maintainAspectRatio: false, // Фиксирует ширину, возвращая третий столбец
             legend: {
-              labels: { fontColor: '#ffffff' }
+              labels: { fontColor: '#333333', fontSize: 12 } // Тёмный текст легенды
             },
             scales: scalesConfig
           } 
@@ -197,17 +205,23 @@
       try {
         const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         const blob = await res.blob();
-        const u = window.URL.createObjectURL(blob); 
-        const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
-      } catch(e) { alert('Ошибка скачивания PNG'); }
+        const u = window.URL.createObjectURL(blob);
+        const a = document.createElement('a'); 
+        a.href = u; 
+        a.download = 'chart.png'; 
+        a.click();
+      } catch(e) { 
+        alert('Ошибка скачивания PNG'); 
+      }
     };
-    
-    function download(c, f, m) { 
-      const a = document.createElement("a"); 
-      a.href = URL.createObjectURL(new Blob([c], {type: m})); 
-      a.download = f; 
-      a.click(); 
+
+    function download(c, f, m) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([c], {type: m}));
+      a.download = f;
+      a.click();
     }
+
   </script>
 </body>
 </html>
