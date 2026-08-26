@@ -6,33 +6,38 @@ penpot.ui.open("QuickChart Generator", "index.html", {
 // Слушаем сообщения из UI плагина
 penpot.ui.onMessage(function(message) {
   
-  // 1. ОБРАБОТКА ЗАПРОСА ЦВЕТОВЫХ ТОКЕНОВ (Новый функционал)
+  // ОБРАБОТКА ЗАПРОСА ЦВЕТОВЫХ ТОКЕНОВ
   if (message && message.type === "get-color-tokens") {
     try {
-      // Получаем все нативные дизайн-токены цвета из текущего файла Penpot
       const tokens = penpot.getColorTokens(); 
       
-      // Форматируем токены в простой плоский массив объектов { name, value }
       const formattedTokens = tokens.map(function(t) {
+        // Защита: извлекаем чистую строку (HEX/RGBA) из объекта Penpot
+        var colorValue = typeof t.value === 'object' && t.value ? t.value.color : t.value;
+        
+        // Если значение всё еще объект, пробуем взять строковое представление
+        if (!colorValue && t.resolvedValueString) {
+          colorValue = t.resolvedValueString;
+        }
+
         return {
-          name: t.name,    // Название токена, например "Brand/Primary" или "Colors/Success"
-          value: t.value   // HEX или RGBA значение цвета, например "#3B82F6"
+          name: t.name || "Без названия",
+          value: colorValue || "#3B82F6" // Резервный синий, если цвет не прочитался
         };
       });
 
-      // Отправляем массив токенов обратно в iframe (в index.html)
+      // Отправляем обратно в UI
       penpot.ui.sendMessage({
         type: "response-color-tokens",
         tokens: formattedTokens
       });
     } catch (err) {
       console.error("Ошибка получения токенов цвета Penpot:", err);
-      // Если токенов в файле нет или произошла ошибка, возвращаем пустой массив
       penpot.ui.sendMessage({ type: "response-color-tokens", tokens: [] });
     }
   }
 
-  // 2. ВСТАВКА SVG НА ХОЛСТ (Ваш оригинальный рабочий код)
+  // ВСТАВКА SVG НА ХОЛСТ
   if (message && message.type === "insert-chart" && message.svgCode) {
     try {
       var shape = penpot.createShapeFromSvg(message.svgCode);
