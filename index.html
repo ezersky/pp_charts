@@ -60,6 +60,22 @@
       <input type="number" id="height" class="pp-input" value="350">
     </div>
   </div>
+
+  <!-- Связанные селекты для Токенов Цветов из Penpot -->
+  <div class="form-group row">
+    <div>
+      <label class="pp-label">Набор токенов</label>
+      <select id="tokenGroup" class="pp-select">
+        <option value="">Загрузка палитр...</option>
+      </select>
+    </div>
+    <div>
+      <label class="pp-label">Основной цвет токена</label>
+      <select id="tokenColor" class="pp-select">
+        <option value="">Выберите набор...</option>
+      </select>
+    </div>
+  </div>
   
   <div class="form-group">
     <label class="pp-label">Данные графика (через запятую)</label>
@@ -71,10 +87,9 @@
     <input type="text" id="chartLabels" class="pp-input" value="Янв, Фев, Мар">
   </div>
 
-  <!-- НОВОЕ ПОЛЕ: Настройки цветов чарта -->
   <div class="form-group">
-    <label class="pp-label">Цвета чарта (HEX через запятую)</label>
-    <input type="text" id="chartColors" class="pp-input" value="#3B82F6, #10B981, #F59E0B">
+    <label class="pp-label">Доп. цвета чарта (HEX через запятую)</label>
+    <input type="text" id="chartColors" class="pp-input" value="#10B981, #F59E0B, #EF4444, #8B5CF6">
   </div>
   
   <button id="insertBtn" class="pp-btn pp-btn-primary" style="width: 100%; height: 36px; border-radius: 4px;">Вставить в макет</button>
@@ -85,6 +100,79 @@
   </div>
 
   <script>
+    // Хранилище для полученных из Penpot данных о токенах
+    let penpotColorTokens = {};
+
+    // Запрашиваем токены у Penpot сразу при старте плагина
+    window.addEventListener('DOMContentLoaded', () => {
+      parent.postMessage({ type: 'get-color-tokens' }, '*');
+    });
+
+    // Слушаем ответ от Penpot с массивом токенов
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (message.type === 'response-color-tokens' && message.tokens) {
+        parseTokens(message.tokens);
+      }
+    });
+
+    // Сортируем токены по их группам (палитрам)
+    function parseTokens(tokens) {
+      penpotColorTokens = {};
+      
+      tokens.forEach(token => {
+        // Предполагаем структуру токена Penpot: { name: "Brand/Primary", value: "#3B82F6" }
+        const parts = token.name.split('/');
+        const groupName = parts.length > 1 ? parts[0] : 'Общие';
+        const colorName = parts.length > 1 ? parts.slice(1).join('/') : token.name;
+
+        if (!penpotColorTokens[groupName]) {
+          penpotColorTokens[groupName] = [];
+        }
+        penpotColorTokens[groupName].push({ name: colorName, value: token.value });
+      });
+
+      updateGroupSelect();
+    }
+
+    // Обновляем первый select (Наборы токенов)
+    function updateGroupSelect() {
+      const groupSelect = document.getElementById('tokenGroup');
+      groupSelect.innerHTML = '<option value="">-- Не выбрано (Дефолт) --</option>';
+
+      Object.keys(penpotColorTokens).forEach(group => {
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        groupSelect.appendChild(option);
+      });
+
+      updateColorSelect();
+    }
+
+    // Обновляем второй select (Токены внутри выбранного набора) при изменении первого
+    document.getElementById('tokenGroup').onchange = updateColorSelect;
+
+    function updateColorSelect() {
+      const groupSelect = document.getElementById('tokenGroup');
+      const colorSelect = document.getElementById('tokenColor');
+      const selectedGroup = groupSelect.value;
+
+      colorSelect.innerHTML = '';
+
+      if (!selectedGroup || !penpotColorTokens[selectedGroup]) {
+        colorSelect.innerHTML = '<option value="">Выберите набор...</option>';
+        return;
+      }
+
+      penpotColorTokens[selectedGroup].forEach(token => {
+        const option = document.createElement('option');
+        option.value = token.value;
+        option.textContent = `${token.name} (${token.value})`;
+        colorSelect.appendChild(option);
+      });
+    }
+
     function buildConfig(fmt = 'svg') {
       const rawValues = document.getElementById('chartDataValues').value;
       const dataArray = rawValues.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
@@ -94,48 +182,54 @@
 
       const type = document.getElementById('chartType').value;
 
-      // Обработка пользовательских цветов из инпута
+      // Получаем выбранный из токенов основной цвет
+      const selectedTokenColor = document.getElementById('tokenColor').value;
+
+      // Считываем дополнительные цвета из инпута
       const rawColors = document.getElementById('chartColors').value;
-      let userColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      let additionalColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
       
-      // Дефолтная палитра на случай, если поле очистили
-      if (userColors.length === 0) {
-        userColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
+      // Формируем итоговую палитру цветов
+      let finalPalette = [];
+      if (selectedTokenColor) {
+        // Если выбран цвет-токен, он становится ПЕРВЫМ в палитре
+        finalPalette.push(selectedTokenColor);
+      }
+      // Добиваем палитру дополнительными цветами
+      finalPalette = finalPalette.concat(additionalColors);
+
+      // Если палитра всё еще пуста, используем стандартную резервную
+      if (finalPalette.length === 0) {
+        finalPalette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
       }
 
-      // Базовые настройки датасета
       const dataset = {
         label: "Показатели",
         data: dataArray
       };
 
-      // Распределяем цвета в зависимости от выбранного типа
+      // Применяем собранную палитру к типам графиков
       if (type === 'pie' || type === 'doughnut') {
-        // Для круговых чартов отдаем массив цветов на каждый сектор
-        dataset.backgroundColor = userColors.slice(0, dataArray.length);
+        dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
       } else if (type === 'line') {
-        // Для линейного — первый цвет из списка становится линией
-        const primaryColor = userColors[0] || "#3B82F6";
+        const primaryColor = finalPalette[0];
         dataset.borderColor = primaryColor;
-        dataset.backgroundColor = primaryColor + "1A"; // Альфа-канал 10% прозрачности для заливки зоны под линией
+        dataset.backgroundColor = primaryColor + "1A"; 
         dataset.fill = false;
       } else if (type === 'radar') {
-        // Для радара — первый цвет контур, легкая заливка
-        const primaryColor = userColors[0] || "#3B82F6";
+        const primaryColor = finalPalette[0];
         dataset.borderColor = primaryColor;
-        dataset.backgroundColor = primaryColor + "33"; // Альфа-канал 20% прозрачности
+        dataset.backgroundColor = primaryColor + "33"; 
         dataset.fill = true;
       } else {
-        // Для столбчатого (bar) — красим столбцы в один цвет или в разные в зависимости от количества переданных цветов
-        if (userColors.length >= dataArray.length) {
-          dataset.backgroundColor = userColors.slice(0, dataArray.length);
+        if (finalPalette.length >= dataArray.length && selectedTokenColor === "") {
+          dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
         } else {
-          dataset.backgroundColor = userColors[0] || "#3B82F6";
+          dataset.backgroundColor = finalPalette[0];
         }
         dataset.fill = true;
       }
 
-      // Отключаем сетку осей координат для круговых и радарных графиков
       const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
         yAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }],
         xAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }]
@@ -162,7 +256,6 @@
       };
     }
     
-    // Вставка чарта на холст Penpot (Обращение строго к /chart поддомена)
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
       try {
@@ -178,36 +271,3 @@
         const svgCode = await res.text();
         parent.postMessage({ type: 'insert-chart', svgCode: svgCode }, '*');
       } catch(e) {
-        alert('Сервер qc.ezersky.ru не вернул данные. Убедитесь, что Docker запущен.');
-      }
-    };
-    
-    // Скачивание SVG файла (Обращение строго к /chart поддомена)
-    document.getElementById('saveSvgBtn').onclick = async () => {
-      const cfg = buildConfig('svg');
-      try {
-        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
-        download(await res.text(), 'chart.svg', 'image/svg+xml');
-      } catch(e) { alert('Ошибка скачивания SVG'); }
-    };
-    
-    // Скачивание PNG файла (Обращение строго к /chart поддомена)
-    document.getElementById('savePngBtn').onclick = async () => {
-      const cfg = buildConfig('png');
-      try {
-        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
-        const blob = await res.blob();
-        const u = window.URL.createObjectURL(blob); 
-        const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
-      } catch(e) { alert('Ошибка скачивания PNG'); }
-    };
-    
-    function download(c, f, m) { 
-      const a = document.createElement("a"); 
-      a.href = URL.createObjectURL(new Blob([c], {type: m})); 
-      a.download = f; 
-      a.click(); 
-    }
-  </script>
-</body>
-</html>
