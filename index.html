@@ -46,7 +46,7 @@
       <option value="bar">Bar (Столбчатый)</option>
       <option value="doughnut" selected>Doughnut (Пончик)</option>
       <option value="pie">Pie (Круговой)</option>
-      <option value="radar">(Radar) Радарная</option>
+      <option value="radar">Radar (Радарная)</option>
     </select>
   </div>
   
@@ -88,6 +88,38 @@
 
       const type = document.getElementById('chartType').value;
 
+      // Базовые настройки датасета
+      const dataset = {
+        label: "Показатели",
+        data: dataArray
+      };
+
+      // Распределяем цвета в зависимости от типа чарта
+      if (type === 'pie' || type === 'doughnut') {
+        // Для круговых чартов возвращаем ваш исходный массив цветов для каждого сектора
+        dataset.backgroundColor = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"].slice(0, dataArray.length);
+      } else if (type === 'line') {
+        // Для линейного — один цвет обводки, прозрачная заливка
+        dataset.borderColor = "#3B82F6";
+        dataset.backgroundColor = "rgba(59, 130, 246, 0.1)";
+        dataset.fill = false;
+      } else if (type === 'radar') {
+        // Для радара — цвет контура и легкая полупрозрачная заливка
+        dataset.borderColor = "#3B82F6";
+        dataset.backgroundColor = "rgba(59, 130, 246, 0.2)";
+        dataset.fill = true;
+      } else {
+        // Для столбчатого (bar) — сплошной красивый синий цвет
+        dataset.backgroundColor = "#3B82F6";
+        dataset.fill = true;
+      }
+
+      // Отключаем декартовы сетки осей для круговых и радарных графиков, чтобы не ломать отображение
+      const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
+        yAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }],
+        xAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }]
+      };
+
       return { 
         format: fmt, 
         width: parseInt(document.getElementById('width').value) || 500, 
@@ -96,16 +128,14 @@
           type: type, 
           data: {
             labels: labelsArray,
-            datasets: [{
-              label: "Показатели",
-              data: dataArray,
-              backgroundColor: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"].slice(0, dataArray.length),
-              borderColor: "#3B82F6",
-              fill: type === 'line' ? false : true
-            }]
+            datasets: [dataset]
           },
           options: { 
-            responsive: true
+            responsive: true,
+            legend: {
+              labels: { fontColor: '#ffffff' }
+            },
+            scales: scalesConfig
           } 
         } 
       };
