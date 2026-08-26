@@ -71,9 +71,10 @@
     <input type="text" id="chartLabels" class="pp-input" value="Янв, Фев, Мар">
   </div>
 
+  <!-- НОВОЕ ПОЛЕ: Настройки цветов чарта -->
   <div class="form-group">
-    <label class="pp-label">Доп. цвета чарта (HEX через запятую)</label>
-    <input type="text" id="chartColors" class="pp-input" value="#10B981, #F59E0B, #EF4444, #8B5CF6">
+    <label class="pp-label">Цвета чарта (HEX через запятую)</label>
+    <input type="text" id="chartColors" class="pp-input" value="#3B82F6, #10B981, #F59E0B">
   </div>
   
   <button id="insertBtn" class="pp-btn pp-btn-primary" style="width: 100%; height: 36px; border-radius: 4px;">Вставить в макет</button>
@@ -84,15 +85,6 @@
   </div>
 
   <script>
-
-function getAlphaColor(hex, opacity) {
-      if (!hex || !hex.startsWith('#')) return hex || "#3B82F6";
-      let clean = hex.replace('#', '');
-      if (clean.length === 3) clean = clean.split('').map(s => s + s).join('');
-      const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
-      return '#' + clean + alpha;
-    }
-
     function buildConfig(fmt = 'svg') {
       const rawValues = document.getElementById('chartDataValues').value;
       const dataArray = rawValues.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
@@ -102,33 +94,48 @@ function getAlphaColor(hex, opacity) {
 
       const type = document.getElementById('chartType').value;
 
+      // Обработка пользовательских цветов из инпута
       const rawColors = document.getElementById('chartColors').value;
-      let additionalColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      let userColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
       
-      let finalPalette = [].concat(additionalColors);
-
-      if (finalPalette.length === 0) {
-        finalPalette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
+      // Дефолтная палитра на случай, если поле очистили
+      if (userColors.length === 0) {
+        userColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
       }
 
+      // Базовые настройки датасета
       const dataset = {
         label: "Показатели",
         data: dataArray
       };
 
-      const mainColor = finalPalette[0] || "#3B82F6";
-
-        if (type === 'pie' || type === 'doughnut') {
-          dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
-        } else if (type === 'line' || type === 'radar') {
-          dataset.borderColor = mainColor;
-          dataset.backgroundColor = getAlphaColor(mainColor, type === 'line' ? 0.1 : 0.2);
-          dataset.fill = (type === 'radar');
+      // Распределяем цвета в зависимости от выбранного типа
+      if (type === 'pie' || type === 'doughnut') {
+        // Для круговых чартов отдаем массив цветов на каждый сектор
+        dataset.backgroundColor = userColors.slice(0, dataArray.length);
+      } else if (type === 'line') {
+        // Для линейного — первый цвет из списка становится линией
+        const primaryColor = userColors[0] || "#3B82F6";
+        dataset.borderColor = primaryColor;
+        dataset.backgroundColor = primaryColor + "1A"; // Альфа-канал 10% прозрачности для заливки зоны под линией
+        dataset.fill = false;
+      } else if (type === 'radar') {
+        // Для радара — первый цвет контур, легкая заливка
+        const primaryColor = userColors[0] || "#3B82F6";
+        dataset.borderColor = primaryColor;
+        dataset.backgroundColor = primaryColor + "33"; // Альфа-канал 20% прозрачности
+        dataset.fill = true;
+      } else {
+        // Для столбчатого (bar) — красим столбцы в один цвет или в разные в зависимости от количества переданных цветов
+        if (userColors.length >= dataArray.length) {
+          dataset.backgroundColor = userColors.slice(0, dataArray.length);
         } else {
-          dataset.backgroundColor = finalPalette.length > 1 ? finalPalette.slice(0, dataArray.length) : mainColor;
-          dataset.fill = true;
+          dataset.backgroundColor = userColors[0] || "#3B82F6";
         }
+        dataset.fill = true;
+      }
 
+      // Отключаем сетку осей координат для круговых и радарных графиков
       const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
         yAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }],
         xAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }]
@@ -155,6 +162,7 @@ function getAlphaColor(hex, opacity) {
       };
     }
     
+    // Вставка чарта на холст Penpot (Обращение строго к /chart поддомена)
     document.getElementById('insertBtn').onclick = async () => {
       const cfg = buildConfig('svg'); 
       try {
@@ -174,6 +182,7 @@ function getAlphaColor(hex, opacity) {
       }
     };
     
+    // Скачивание SVG файла (Обращение строго к /chart поддомена)
     document.getElementById('saveSvgBtn').onclick = async () => {
       const cfg = buildConfig('svg');
       try {
@@ -182,24 +191,23 @@ function getAlphaColor(hex, opacity) {
       } catch(e) { alert('Ошибка скачивания SVG'); }
     };
     
+    // Скачивание PNG файла (Обращение строго к /chart поддомена)
     document.getElementById('savePngBtn').onclick = async () => {
       const cfg = buildConfig('png');
       try {
-        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) 
-      });
+        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
         const blob = await res.blob();
-        const u = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); 
-        a.href = u; a.download = 'chart.png'; a.click();} catch(e) { 
-          alert('Ошибка скачивания PNG'); 
-        }
+        const u = window.URL.createObjectURL(blob); 
+        const a = document.createElement('a'); a.href = u; a.download = 'chart.png'; a.click();
+      } catch(e) { alert('Ошибка скачивания PNG'); }
     };
-    function download(c, f, m) {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([c], {type: m}));
-      a.download = f;a.click();
-   }
-
+    
+    function download(c, f, m) { 
+      const a = document.createElement("a"); 
+      a.href = URL.createObjectURL(new Blob([c], {type: m})); 
+      a.download = f; 
+      a.click(); 
+    }
   </script>
 </body>
 </html>
