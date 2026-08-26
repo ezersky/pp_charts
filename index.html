@@ -101,6 +101,14 @@
   <script>
     let penpotColorTokens = {};
 
+    function getAlphaColor(hex, opacity) {
+      if (!hex || !hex.startsWith('#')) return hex || "#3B82F6";
+      let clean = hex.replace('#', '');
+      if (clean.length === 3) clean = clean.split('').map(s => s + s).join('');
+      const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
+      return '#' + clean + alpha;
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       parent.postMessage({ type: 'get-color-tokens' }, '*');
     });
@@ -199,26 +207,18 @@
         data: dataArray
       };
 
-      if (type === 'pie' || type === 'doughnut') {
-        dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
-      } else if (type === 'line') {
-        const primaryColor = finalPalette[0];
-        dataset.borderColor = primaryColor;
-        dataset.backgroundColor = primaryColor + "1A"; 
-        dataset.fill = false;
-      } else if (type === 'radar') {
-        const primaryColor = finalPalette[0];
-        dataset.borderColor = primaryColor;
-        dataset.backgroundColor = primaryColor + "33"; 
-        dataset.fill = true;
-      } else {
-        if (finalPalette.length >= dataArray.length && selectedTokenColor === "") {
+      const mainColor = finalPalette[0] || "#3B82F6";
+
+        if (type === 'pie' || type === 'doughnut') {
           dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
+        } else if (type === 'line' || type === 'radar') {
+          dataset.borderColor = mainColor;
+          dataset.backgroundColor = getAlphaColor(mainColor, type === 'line' ? 0.1 : 0.2);
+          dataset.fill = (type === 'radar');
         } else {
-          dataset.backgroundColor = finalPalette[0];
+          dataset.backgroundColor = finalPalette.length > 1 ? finalPalette.slice(0, dataArray.length) : mainColor;
+          dataset.fill = true;
         }
-        dataset.fill = true;
-      }
 
       const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
         yAxes: [{ gridLines: { color: 'rgba(255,255,255,0.1)' }, ticks: { fontColor: '#ffffff' } }],
@@ -276,7 +276,8 @@
     document.getElementById('savePngBtn').onclick = async () => {
       const cfg = buildConfig('png');
       try {
-        const res = await fetch('ezersky.ru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+        const res = await fetch('https://qc.ezersky.ru/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) 
+      });
         const blob = await res.blob();
         const u = window.URL.createObjectURL(blob);
         const a = document.createElement('a'); 
