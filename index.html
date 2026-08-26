@@ -95,78 +95,40 @@
     }
 
     function buildConfig(fmt = 'svg') {
-      const rawValues = document.getElementById('chartDataValues').value;
-      const dataArray = rawValues.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-      
-      const rawLabels = document.getElementById('chartLabels').value;
-      const labelsArray = rawLabels.split(',').map(l => l.trim()).filter(l => l.length > 0);
+  // 1. Получение и обработка данных
+  const dataArray = document.getElementById('chartDataValues').value.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+  
+  // 2. Обработка лейблов с исправлением (обрезание под длину данных)
+  let labelsArray = document.getElementById('chartLabels').value.split(',').map(l => l.trim()).filter(l => l.length > 0);
+  labelsArray = labelsArray.slice(0, dataArray.length);
 
-      const type = document.getElementById('chartType').value;
+  // 3. Настройки типа и цветов
+  const type = document.getElementById('chartType').value;
+  const rawColors = document.getElementById('chartColors').value;
+  let palette = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
+  if (palette.length === 0) palette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
 
-      const rawColors = document.getElementById('chartColors').value;
-      let additionalColors = rawColors.split(',').map(c => c.trim()).filter(c => c.length > 0);
-      
-      let finalPalette = [].concat(additionalColors);
+  const dataset = { label: "Показатели", data: dataArray };
 
-      if (finalPalette.length === 0) {
-        finalPalette = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6B7280"];
-      }
+  // 4. Логика цветов для разных типов чартов
+  if (['pie', 'doughnut', 'bar'].includes(type)) {
+    dataset.backgroundColor = palette.slice(0, dataArray.length);
+  } else {
+    dataset.borderColor = palette[0];
+    dataset.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+  }
 
-      const dataset = {
-        label: "Показатели",
-        data: dataArray
-      };
+  // 5. Конфигурация QuickChart
+  return { 
+    format: fmt, 
+    chart: { 
+      type: type, 
+      data: { labels: labelsArray, datasets: [dataset] },
+      options: { /* настройки осей и легенды */ } 
+    } 
+  };
+}
 
-      const mainColor = finalPalette[0] || "#3B82F6";
-
-      // ИСПРАВЛЕНО: строго обрезаем массив цветов по длине массива данных (dataArray.length)
-      if (type === 'pie' || type === 'doughnut' || type === 'bar') {
-        dataset.backgroundColor = finalPalette.slice(0, dataArray.length);
-      } else if (type === 'line' || type === 'radar') {
-        dataset.borderColor = mainColor;
-        dataset.backgroundColor = getAlphaColor(mainColor, type === 'line' ? 0.1 : 0.2);
-        dataset.fill = (type === 'radar');
-      } else {
-        dataset.backgroundColor = mainColor;
-        dataset.fill = true;
-      }
-
-
-      // Настройка осей: делаем текст тёмным (#333333) для светлого холста
-      const scalesConfig = (type === 'pie' || type === 'doughnut' || type === 'radar') ? {} : {
-        yAxes: [{ 
-          gridLines: { color: 'rgba(0, 0, 0, 0.05)' }, 
-          ticks: { fontColor: '#333333', fontSize: 12, beginAtZero: true } 
-        }],
-        xAxes: [{ 
-          gridLines: { color: 'rgba(0, 0, 0, 0.05)' }, 
-          ticks: { fontColor: '#333333', fontSize: 12 } 
-        }]
-      };
-
-      return { 
-        format: fmt, 
-        width: parseInt(document.getElementById('width').value) || 500, 
-        height: parseInt(document.getElementById('height').value) || 350,
-        chart: { 
-          type: type, 
-          data: {
-            labels: labelsArray,
-            datasets: [dataset]
-          },
-          options: { 
-            responsive: true,
-            maintainAspectRatio: false, // Предотвращает сжатие и обрезку третьего столбца
-            legend: {
-              // Скрываем плашку легенды для Bar, так как у каждого столбца теперь свой цвет
-              display: (type !== 'bar'),
-              labels: { fontColor: '#333333', fontSize: 12 }
-            },
-            scales: scalesConfig
-          } 
-        } 
-      };
-    }
     
     // Вставка чарта на холст Penpot
     document.getElementById('insertBtn').onclick = async () => {
